@@ -10,52 +10,57 @@ import { sendEmail } from "../services/mail.service.js";
  * @body { username, email, password }
  */
 export async function register(req, res) {
+    try {
+        const { username, email, password } = req.body;
 
-    const { username, email, password } = req.body;
+        const isUserAlreadyExists = await userModel.findOne({
+            $or: [ { email }, { username } ]
+        })
 
-    const isUserAlreadyExists = await userModel.findOne({
-        $or: [ { email }, { username } ]
-    })
+        if (isUserAlreadyExists) {
+            return res.status(400).json({
+                message: "User with this email or username already exists",
+                success: false,
+                err: "User already exists"
+            })
+        }
 
-    if (isUserAlreadyExists) {
-        return res.status(400).json({
-            message: "User with this email or username already exists",
+        const user = await userModel.create({ username, email, password })
+
+        const emailVerificationToken = jwt.sign({
+            email: user.email,
+        }, process.env.JWT_SECRET)
+
+        await sendEmail({
+            to: email,
+            subject: "Welcome to QueryDesk!",
+            html: `
+                    <p>Hi ${username},</p>
+                    <p>Thank you for registering at <strong>QueryDesk</strong>. We're excited to have you on board!</p>
+                    <p>Please verify your email address by clicking the link below:</p>
+                    <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}">Verify Email</a>
+                    <p>If you did not create an account, please ignore this email.</p>
+                    <p>Best regards,<br>The QueryDesk Team</p>
+            `
+        })
+
+        res.status(201).json({
+            message: "User registered successfully",
+            success: true,
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email
+            }
+        });
+
+    } catch (err) {
+        res.status(500).json({
+            message: "Registration failed",
             success: false,
-            err: "User already exists"
+            err: err.message
         })
     }
-
-    const user = await userModel.create({ username, email, password })
-
-    const emailVerificationToken = jwt.sign({
-        email: user.email,
-    }, process.env.JWT_SECRET)
-
-    await sendEmail({
-        to: email,
-        subject: "Welcome to Perplexity!",
-        html: `
-                <p>Hi ${username},</p>
-                <p>Thank you for registering at <strong>Perplexity</strong>. We're excited to have you on board!</p>
-                <p>Please verify your email address by clicking the link below:</p>
-                <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}">Verify Email</a>
-                <p>If you did not create an account, please ignore this email.</p>
-                <p>Best regards,<br>The Perplexity Team</p>
-        `
-    })
-
-    res.status(201).json({
-        message: "User registered successfully",
-        success: true,
-        user: {
-            id: user._id,
-            username: user.username,
-            email: user.email
-        }
-    });
-
-
-
 }
 
 /**
@@ -65,53 +70,65 @@ export async function register(req, res) {
  * @body { email, password }
  */
 export async function login(req, res) {
-    const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-    const user = await userModel.findOne({ email })
+        const user = await userModel.findOne({ email })
 
-    if (!user) {
-        return res.status(400).json({
-            message: "Invalid email or password",
-            success: false,
-            err: "User not found"
-        })
-    }
+        if (!user) {
+            return res.status(400).json({
+                message: "Invalid email or password",
+                success: false,
+                err: "User not found"
+            })
+        }
 
-    const isPasswordMatch = await user.comparePassword(password);
+        const isPasswordMatch = await user.comparePassword(password);
 
-    if (!isPasswordMatch) {
-        return res.status(400).json({
-            message: "Invalid email or password",
-            success: false,
-            err: "Incorrect password"
-        })
-    }
+        if (!isPasswordMatch) {
+            return res.status(400).json({
+                message: "Invalid email or password",
+                success: false,
+                err: "Incorrect password"
+            })
+        }
 
-    if (!user.verified) {
-        return res.status(400).json({
-            message: "Please verify your email before logging in",
-            success: false,
-            err: "Email not verified"
-        })
-    }
+        if (!user.verified) {
+            return res.status(400).json({
+                message: "Please verify your email before logging in",
+                success: false,
+                err: "Email not verified"
+            })
+        }
 
-    const token = jwt.sign({
-        id: user._id,
-        username: user.username,
-    }, process.env.JWT_SECRET, { expiresIn: '7d' })
-
-    res.cookie("token", token)
-
-    res.status(200).json({
-        message: "Login successful",
-        success: true,
-        user: {
+        const token = jwt.sign({
             id: user._id,
             username: user.username,
-            email: user.email
-        }
-    })
+        }, process.env.JWT_SECRET, { expiresIn: '7d' })
 
+        res.cookie("token", token, {
+            httpOnly: true,
+            sameSite: "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days, matches JWT expiry
+        })
+
+        res.status(200).json({
+            message: "Login successful",
+            success: true,
+            user: {
+                id: user._id,
+                username: user.username,
+                email: user.email
+            }
+        })
+
+    } catch (err) {
+        res.status(500).json({
+            message: "Login failed",
+            success: false,
+            err: err.message
+        })
+    }
 }
 
 
@@ -121,23 +138,31 @@ export async function login(req, res) {
  * @access Private
  */
 export async function getMe(req, res) {
-    const userId = req.user.id;
+    try {
+        const userId = req.user.id;
 
-    const user = await userModel.findById(userId).select("-password");
+        const user = await userModel.findById(userId).select("-password");
 
-    if (!user) {
-        return res.status(404).json({
-            message: "User not found",
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found",
+                success: false,
+                err: "User not found"
+            })
+        }
+
+        res.status(200).json({
+            message: "User details fetched successfully",
+            success: true,
+            user
+        })
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed to fetch user",
             success: false,
-            err: "User not found"
+            err: err.message
         })
     }
-
-    res.status(200).json({
-        message: "User details fetched successfully",
-        success: true,
-        user
-    })
 }
 
 
@@ -151,10 +176,7 @@ export async function verifyEmail(req, res) {
     const { token } = req.query;
 
     try {
-
-
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
 
         const user = await userModel.findOne({ email: decoded.email });
 
@@ -174,7 +196,7 @@ export async function verifyEmail(req, res) {
             `
         <h1>Email Verified Successfully!</h1>
         <p>Your email has been verified. You can now log in to your account.</p>
-        <a href="http://localhost:3000/login">Go to Login</a>
+        <a href="http://localhost:5173/login">Go to Login</a>
     `
 
         return res.send(html);

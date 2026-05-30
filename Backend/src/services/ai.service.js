@@ -1,12 +1,13 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { ChatMistralAI } from "@langchain/mistralai"
-import { HumanMessage, SystemMessage, AIMessage, tool, createAgent } from "langchain";
+import { ChatMistralAI } from "@langchain/mistralai";
+import { HumanMessage, SystemMessage, AIMessage } from "@langchain/core/messages";
+import { tool, createAgent } from "langchain";
 import * as z from "zod";
 import { searchInternet } from "./internet.service.js";
 
 const geminiModel = new ChatGoogleGenerativeAI({
-    model: "gemini-flash-latest",
-    apiKey: process.env.GEMINI_API_KEY
+    model: "gemini-2.0-flash",
+    apiKey: process.env.GOOGLE_API_KEY
 });
 
 const mistralModel = new ChatMistralAI({
@@ -49,7 +50,7 @@ export async function generateResponse(messages) {
             })) ]
     });
 
-    return response.messages[ response.messages.length - 1 ].text;
+    return response.messages[ response.messages.length - 1 ].content;
 
 }
 
@@ -67,6 +68,6 @@ export async function generateChatTitle(message) {
             `)
     ])
 
-    return response.text;
+    return response.content;
 
 }
