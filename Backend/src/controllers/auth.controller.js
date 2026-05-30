@@ -116,7 +116,8 @@ export async function login(req, res) {
 
         res.cookie("token", token, {
             httpOnly: true,
-            sameSite: "lax",
+            sameSite: "none",
+            secure: true,
             maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days, matches JWT expiry
         })
 
@@ -228,7 +229,8 @@ export async function logout(req, res) {
     try {
         res.clearCookie("token", {
             httpOnly: true,
-            sameSite: "lax"
+            sameSite: "none",
+            secure: true
         })
         res.status(200).json({
             message: "Logout successful",
@@ -269,7 +271,8 @@ export async function deleteAccount(req, res) {
         // Also clear cookie
         res.clearCookie("token", {
             httpOnly: true,
-            sameSite: "lax"
+            sameSite: "none",
+            secure: true
         })
 
         res.status(200).json({
