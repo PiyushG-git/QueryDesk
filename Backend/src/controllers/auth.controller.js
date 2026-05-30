@@ -1,6 +1,8 @@
 import userModel from "../models/user.model.js";
 import jwt from "jsonwebtoken";
 import { sendEmail } from "../services/mail.service.js";
+import chatModel from "../models/chat.model.js";
+import messageModel from "../models/message.model.js";
 
 
 /**
@@ -31,18 +33,24 @@ export async function register(req, res) {
             email: user.email,
         }, process.env.JWT_SECRET)
 
-        await sendEmail({
-            to: email,
-            subject: "Welcome to QueryDesk!",
-            html: `
-                    <p>Hi ${username},</p>
-                    <p>Thank you for registering at <strong>QueryDesk</strong>. We're excited to have you on board!</p>
-                    <p>Please verify your email address by clicking the link below:</p>
-                    <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}">Verify Email</a>
-                    <p>If you did not create an account, please ignore this email.</p>
-                    <p>Best regards,<br>The QueryDesk Team</p>
-            `
-        })
+        try {
+            await sendEmail({
+                to: email,
+                subject: "Welcome to QueryDesk!",
+                html: `
+                        <p>Hi ${username},</p>
+                        <p>Thank you for registering at <strong>QueryDesk</strong>. We're excited to have you on board!</p>
+                        <p>Please verify your email address by clicking the link below:</p>
+                        <a href="http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}">Verify Email</a>
+                        <p>If you did not create an account, please ignore this email.</p>
+                        <p>Best regards,<br>The QueryDesk Team</p>
+                `
+            })
+        } catch (mailErr) {
+            console.error("Mail Error: ", mailErr.message);
+            console.log("Verify Link:", `http://localhost:3000/api/auth/verify-email?token=${emailVerificationToken}`);
+            // Let the registration succeed even if email fails in development
+        }
 
         res.status(201).json({
             message: "User registered successfully",
@@ -192,17 +200,85 @@ export async function verifyEmail(req, res) {
 
         await user.save();
 
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
         const html =
             `
         <h1>Email Verified Successfully!</h1>
         <p>Your email has been verified. You can now log in to your account.</p>
-        <a href="http://localhost:5173/login">Go to Login</a>
+        <a href="${frontendUrl}/login">Go to Login</a>
     `
 
         return res.send(html);
     } catch (err) {
         return res.status(400).json({
             message: "Invalid or expired token",
+            success: false,
+            err: err.message
+        })
+    }
+}
+
+
+/**
+ * @desc Logout user
+ * @route POST /api/auth/logout
+ * @access Public
+ */
+export async function logout(req, res) {
+    try {
+        res.clearCookie("token", {
+            httpOnly: true,
+            sameSite: "lax"
+        })
+        res.status(200).json({
+            message: "Logout successful",
+            success: true
+        })
+    } catch (err) {
+        res.status(500).json({
+            message: "Logout failed",
+            success: false,
+            err: err.message
+        })
+    }
+}
+
+
+/**
+ * @desc Delete user account
+ * @route DELETE /api/auth/delete
+ * @access Private
+ */
+export async function deleteAccount(req, res) {
+    try {
+        const userId = req.user.id;
+        
+        // Find all chats for this user to delete associated messages
+        const userChats = await chatModel.find({ user: userId });
+        const chatIds = userChats.map(chat => chat._id);
+
+        // Delete all messages that belong to these chats
+        await messageModel.deleteMany({ chat: { $in: chatIds } });
+
+        // Delete all chats that belong to this user
+        await chatModel.deleteMany({ user: userId });
+
+        // Finally, delete the user
+        await userModel.findByIdAndDelete(userId);
+        
+        // Also clear cookie
+        res.clearCookie("token", {
+            httpOnly: true,
+            sameSite: "lax"
+        })
+
+        res.status(200).json({
+            message: "Account deleted successfully",
+            success: true
+        })
+    } catch (err) {
+        res.status(500).json({
+            message: "Failed to delete account",
             success: false,
             err: err.message
         })

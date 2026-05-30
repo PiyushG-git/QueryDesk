@@ -6,14 +6,25 @@ export async function sendMessage(req, res) {
     try {
         const { message, chat: chatId } = req.body;
 
-        let title = null, chat = null;
+        let title = "New Chat", chat = null;
 
-        if (!chatId) {
-            title = await generateChatTitle(message);
+        if (chatId) {
+            chat = await chatModel.findOne({ _id: chatId, user: req.user.id });
+            if (!chat) {
+                return res.status(403).json({
+                    message: "Not authorized or chat not found",
+                    success: false
+                });
+            }
+        } else {
             chat = await chatModel.create({
                 user: req.user.id,
                 title
-            })
+            });
+            // Fire and forget title generation
+            generateChatTitle(message).then(async (newTitle) => {
+                await chatModel.findByIdAndUpdate(chat._id, { title: newTitle });
+            }).catch(err => console.error("Title generation failed:", err));
         }
 
         const userMessage = await messageModel.create({
@@ -33,7 +44,7 @@ export async function sendMessage(req, res) {
         })
 
         res.status(201).json({
-            title,
+            title: chat.title,
             chat,
             aiMessage
         })

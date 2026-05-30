@@ -1,5 +1,5 @@
 import { useDispatch } from "react-redux";
-import { register, login, getMe } from "../service/auth.api";
+import { register, login, getMe, logout, deleteAccount } from "../service/auth.api";
 import { setUser, setLoading, setError } from "../auth.slice";
 
 
@@ -10,10 +10,12 @@ export function useAuth() {
 
     async function handleRegister({ email, username, password }) {
         try {
+            dispatch(setError(null))
             dispatch(setLoading(true))
             const data = await register({ email, username, password })
         } catch (error) {
             dispatch(setError(error.response?.data?.message || "Registration failed"))
+            throw error
         } finally {
             dispatch(setLoading(false))
         }
@@ -21,11 +23,13 @@ export function useAuth() {
 
     async function handleLogin({ email, password }) {
         try {
+            dispatch(setError(null))
             dispatch(setLoading(true))
             const data = await login({ email, password })
             dispatch(setUser(data.user))
         } catch (err) {
             dispatch(setError(err.response?.data?.message || "Login failed"))
+            throw err
         } finally {
             dispatch(setLoading(false))
         }
@@ -43,10 +47,33 @@ export function useAuth() {
         }
     }
 
+    async function handleLogout() {
+        try {
+            await logout()
+            dispatch(setUser(null))
+        } catch (err) {
+            console.error("Logout failed", err)
+        }
+    }
+
+    async function handleDeleteAccount() {
+        try {
+            await deleteAccount()
+            dispatch(setUser(null))
+        } catch (err) {
+            console.error("Delete account failed", err)
+        }
+    }
+
+    const clearError = () => dispatch(setError(null))
+
     return {
         handleRegister,
         handleLogin,
         handleGetMe,
+        handleLogout,
+        handleDeleteAccount,
+        clearError
     }
 
 }

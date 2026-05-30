@@ -1,6 +1,6 @@
 import {Router} from 'express'
 import { loginValidator, registerValidator } from '../validators/auth.validator.js'
-import { getMe, login, register, verifyEmail } from '../controllers/auth.controller.js'
+import { getMe, login, register, verifyEmail, logout, deleteAccount } from '../controllers/auth.controller.js'
 import { authUser } from '../middleware/auth.middleware.js'
 
 
@@ -16,5 +16,8 @@ authRouter.post("/login",loginValidator,login)
 
 authRouter.get('/get-me',authUser,getMe)
 
+authRouter.post('/logout', logout)
+
+authRouter.delete('/delete', authUser, deleteAccount)
 
 export default authRouter
