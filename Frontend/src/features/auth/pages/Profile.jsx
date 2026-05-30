@@ -62,6 +62,16 @@ const CloseIcon = () => (
     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
   </svg>
 )
+const BotIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>
+  </svg>
+)
+const ChevronRightIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>
+)
 
 
 const SettingRow = ({ label, value, isPassword }) => (
@@ -367,6 +377,54 @@ const Profile = () => {
                 </button>
               </div>
             </div>
+
+            {/* My AI Agents */}
+            <div className="profile-settings-section" style={{ padding: '20px 36px', borderTop: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-faint)' }}>
+                  My AI Agents
+                </h3>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  { name: 'Seller Agent', desc: 'Handles product inquiries & sales', path: '/agents/seller' },
+                  { name: 'Appointment Agent', desc: 'Manages bookings & calendar', path: '/agents/appointment' },
+                  { name: 'Customer Support Agent', desc: 'Resolves technical issues', path: '/agents/customer-support' }
+                ].map((agent, idx) => (
+                  <button key={idx} onClick={() => navigate(agent.path)} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '12px 16px', background: 'var(--bg-card-high)',
+                    border: '1px solid var(--border-muted)', borderRadius: 'var(--radius-md)',
+                    cursor: 'pointer', textAlign: 'left', transition: 'all 150ms'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-muted)'; e.currentTarget.style.boxShadow = 'none' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <div style={{
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        background: 'rgba(49,184,198,0.1)', color: 'var(--primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <BotIcon />
+                      </div>
+                      <div>
+                        <p style={{ fontSize: '14.5px', fontWeight: '600', color: 'var(--text-primary)', marginBottom: '2px' }}>
+                          {agent.name}
+                        </p>
+                        <p style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                          {agent.desc}
+                        </p>
+                      </div>
+                    </div>
+                    <div style={{ color: 'var(--text-faint)' }}>
+                      <ChevronRightIcon />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
 
             {/* Danger Zone */}
             <div className="profile-danger-zone" style={{

@@ -31,16 +31,18 @@ const agent = createAgent({
     tools: [ searchInternetTool ],
 })
 
-export async function generateResponse(messages) {
+export async function generateResponse(messages, customSystemPrompt) {
     console.log(messages)
 
-    const response = await agent.invoke({
-        messages: [
-            new SystemMessage(`
+    const defaultPrompt = `
                 You are a helpful and precise assistant for answering questions.
                 If you don't know the answer, say you don't know. 
                 If the question requires up-to-date information, use the "searchInternet" tool to get the latest information from the internet and then answer based on the search results.
-            `),
+            `;
+
+    const response = await agent.invoke({
+        messages: [
+            new SystemMessage(customSystemPrompt || defaultPrompt),
             ...(messages.map(msg => {
                 if (msg.role == "user") {
                     return new HumanMessage(msg.content)
